@@ -1,0 +1,81 @@
+name: Auto Create Draft PRs
+
+# feature→devのPRが作成されたときに、自動的にstgとmain向けのdraft PRを作成
+on:
+  pull_request:
+    types: [opened]
+    branches:
+      - dev
+
+jobs:
+  create-draft-prs:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create draft PRs for stg and main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # PRの情報を取得
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_BODY="${{ github.event.pull_request.body }}"
+          BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+
+          echo "Creating draft PRs for branch: $BRANCH_NAME"
+          echo "Original PR title: $PR_TITLE"
+
+          # stg向けdraft PR作成
+          echo "Creating draft PR for stg branch..."
+          gh pr create \
+            --base stg \
+            --head "$BRANCH_NAME" \
+            --title "[$BRANCH_NAME] $PR_TITLE" \
+            --body "$(cat <<EOF
+          ## 自動作成されたdraft PR (stg向け)
+
+          このPRは、dev向けPR (#${{ github.event.pull_request.number }}) の作成時に自動的に作成されました。
+
+          ### 元のPR
+          - Dev向けPR: #${{ github.event.pull_request.number }}
+          - ブランチ: \`$BRANCH_NAME\`
+
+          ### 元のPR概要
+          $PR_BODY
+
+          ---
+          🤖 自動生成 by GitHub Actions
+          EOF
+          )" \
+            --draft || echo "stg向けPRの作成に失敗しました（既に存在する可能性があります）"
+
+          # main向けdraft PR作成
+          echo "Creating draft PR for main branch..."
+          gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "[$BRANCH_NAME] $PR_TITLE" \
+            --body "$(cat <<EOF
+          ## 自動作成されたdraft PR (main向け)
+
+          このPRは、dev向けPR (#${{ github.event.pull_request.number }}) の作成時に自動的に作成されました。
+
+          ### 元のPR
+          - Dev向けPR: #${{ github.event.pull_request.number }}
+          - ブランチ: \`$BRANCH_NAME\`
+
+          ### 元のPR概要
+          $PR_BODY
+
+          ---
+          🤖 自動生成 by GitHub Actions
+          EOF
+          )" \
+            --draft || echo "main向けPRの作成に失敗しました（既に存在する可能性があります）"
+
+          echo "Draft PRs created successfully!"
