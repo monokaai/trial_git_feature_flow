@@ -285,6 +285,82 @@ gitGraph
 - 統合テストをdevelop上で実施
 - 一括リリース
 
+## 小規模チームのためのオーバーヘッド削減策
+
+### 自動PR作成 GitHub Actions
+
+Git Feature Flowでは、各環境（dev, stg, main）に対してfeatureブランチから個別にPRを作成する必要があります。小規模チームでは、この作業がオーバーヘッドになる可能性があります。
+
+このリポジトリでは、**feature→devのPRを作成すると自動的にstg, main向けのdraft PRも作成される**GitHub Actionsを実装しています。
+
+### 仕組み
+
+```.github/workflows/auto-create-draft-prs.yml```ワークフローが以下を自動実行します：
+
+1. feature→devのPRが作成される（`opened`イベント）
+2. 同じfeatureブランチから以下を自動作成：
+   - **stg向けdraft PR**: ステージング環境でのテスト用
+   - **main向けdraft PR**: 本番リリース用
+
+draft PRとして作成されるため、準備ができたらready for reviewに変更してレビュー依頼できます。
+
+### メリット
+
+✅ **手作業の削減**: dev向けPRを作成するだけで、stg/main向けPRも自動作成
+✅ **見落とし防止**: 各環境向けのPRを作成し忘れることがない
+✅ **並行レビュー**: draft状態で先にコードレビューを進められる
+✅ **柔軟なリリース**: 環境ごとに独立してマージタイミングを調整可能
+
+### 初回セットアップ
+
+GitHub Actionsがワークフローから PRを作成するには、リポジトリ設定の変更が必要です：
+
+1. GitHubリポジトリの **Settings** → **Actions** → **General** に移動
+2. **Workflow permissions** セクションを見つける
+3. **Allow GitHub Actions to create and approve pull requests** にチェックを入れる
+4. **Save** をクリック
+
+この設定により、ワークフローが自動的にPRを作成できるようになります。
+
+### 使い方
+
+1. mainから新しいfeatureブランチを作成
+   ```bash
+   git checkout main
+   git checkout -b feature/new-feature
+   ```
+
+2. 開発・コミット
+   ```bash
+   git add .
+   git commit -m "feat: 新機能を追加"
+   git push -u origin feature/new-feature
+   ```
+
+3. **dev向けPRのみ作成**
+   ```bash
+   gh pr create --base dev --head feature/new-feature --title "feat: 新機能" --body "説明"
+   ```
+
+4. **自動的に以下が作成されます**：
+   - ✅ stg向けdraft PR（自動作成）
+   - ✅ main向けdraft PR（自動作成）
+
+5. 各環境で必要に応じてdraft PRをready for reviewに変更してマージ
+
+### ワークフロー図
+
+```mermaid
+graph LR
+    A[feature→devのPR作成] --> B[GitHub Actions起動]
+    B --> C[stg向けdraft PR作成]
+    B --> D[main向けdraft PR作成]
+    C --> E[準備完了時にready化]
+    D --> F[準備完了時にready化]
+```
+
+このアプローチにより、**小規模チームでも Git Feature Flowの利点を享受しながら、運用のオーバーヘッドを最小化**できます。
+
 ## まとめ
 
 ### Git Feature Flowの4原則
