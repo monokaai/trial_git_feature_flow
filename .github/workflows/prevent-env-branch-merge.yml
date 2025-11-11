@@ -1,0 +1,43 @@
+name: Prevent Environment Branch Merges
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  check-branch-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for environment branch merges
+        run: |
+          BASE_BRANCH="${{ github.base_ref }}"
+          HEAD_BRANCH="${{ github.head_ref }}"
+
+          ENV_BRANCHES=("dev" "stg" "main")
+
+          # 環境ブランチ間のマージをチェック
+          if [[ " ${ENV_BRANCHES[@]} " =~ " ${BASE_BRANCH} " ]] && \
+             [[ " ${ENV_BRANCHES[@]} " =~ " ${HEAD_BRANCH} " ]] && \
+             [[ "$BASE_BRANCH" != "$HEAD_BRANCH" ]]; then
+            echo "::error::Environment branches (dev, stg, main) cannot be merged into each other."
+            echo "Base branch: $BASE_BRANCH"
+            echo "Head branch: $HEAD_BRANCH"
+            echo "All changes must come from feature branches via Squash merge."
+            exit 1
+          fi
+
+          # 環境ブランチへの直接pushをチェック（featureブランチからのみ許可）
+          if [[ " ${ENV_BRANCHES[@]} " =~ " ${BASE_BRANCH} " ]]; then
+            if [[ ! "$HEAD_BRANCH" =~ ^(feature|fix|hotfix)/ ]]; then
+              echo "::error::Only feature/fix/hotfix branches can be merged into environment branches."
+              echo "Base branch: $BASE_BRANCH"
+              echo "Head branch: $HEAD_BRANCH"
+              echo "Branch name must start with 'feature/', 'fix/', or 'hotfix/'"
+              exit 1
+            fi
+          fi
+
+          echo "✅ Branch merge check passed"
+          echo "Base branch: $BASE_BRANCH"
+          echo "Head branch: $HEAD_BRANCH"
+

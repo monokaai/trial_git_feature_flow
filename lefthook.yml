@@ -1,0 +1,27 @@
+# Lefthook configuration
+# https://github.com/evilmartians/lefthook
+#
+# 環境ブランチへの直接pushを防ぐためのpre-push hook
+
+pre-push:
+  commands:
+    prevent-env-branch-push:
+      run: |
+        # 環境ブランチの定義
+        ENV_BRANCHES=("dev" "stg" "main")
+
+        # push先のブランチ名を取得
+        while read local_ref local_sha remote_ref remote_sha
+        do
+          # リモートブランチ名から環境ブランチ名を抽出
+          BRANCH_NAME=$(echo "$remote_ref" | sed 's|refs/heads/||')
+
+          # 環境ブランチへの直接pushをチェック
+          for env_branch in "${ENV_BRANCHES[@]}"; do
+            if [ "$BRANCH_NAME" = "$env_branch" ]; then
+              echo "❌ ERROR: Direct push to environment branch '$env_branch' is not allowed."
+              echo "   Please create a Pull Request from a feature branch instead."
+              exit 1
+            fi
+          done
+        done

@@ -1,0 +1,49 @@
+{
+  "bypass_actors": [],
+  "conditions": {
+    "ref_name": {
+      "exclude": [],
+      "include": [
+        "^dev$",
+        "^stg$",
+        "^main$"
+      ]
+    }
+  },
+  "enforcement": "active",
+  "name": "Environment Branch Protection",
+  "rules": [
+    {
+      "parameters": {
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_approving_review_count": 1,
+        "required_review_thread_resolution": true
+      },
+      "type": "pull_request"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "required_linear_history"
+    },
+    {
+      "parameters": {
+        "merge_method": "squash"
+      },
+      "type": "merge_queue"
+    },
+    {
+      "parameters": {
+        "update_allows_fetch_and_merge": false
+      },
+      "type": "update"
+    }
+  ],
+  "target": "branch"
+}
